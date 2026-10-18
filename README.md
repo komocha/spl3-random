@@ -5,7 +5,10 @@
 ## 使い方
 
 `index.html` をブラウザで開くだけで動きます。ビルドやサーバーは要りません。
-GitHub Pages で公開する場合は、リポジトリの Settings → Pages で `main` ブランチのルートを指定してください。
+公開ページ: https://komocha.github.io/spl3-random/
+
+`main` に push すると、GitHub Actions（`.github/workflows/pages.yml`）が `index.html` と `theme.css` を GitHub Pages にデプロイします。
+初回だけ、リポジトリの Settings → Pages で Source を「GitHub Actions」にしてください。
 
 ## できること
 
