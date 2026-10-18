@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ブキルーレット</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap">
+<style>
+/* Layout: one column — roller stage on top, filters below, full weapon list folded at the bottom */
+:root {
+  --bg: #f3f1fa;
+  --surface: #ffffff;
+  --fg: #1d1838;
+  --muted: #6a6488;
+  --line: #dcd7ee;
+  --ink-a: #e0127a;   /* magenta ink */
+  --ink-b: #12b5a5;   /* teal ink */
+  --on-ink: #ffffff;
+  --off: #c9c4dc;
+  --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141126; --surface: #1f1b38; --fg: #f0eefa; --muted: #a49fc2; --line: #353057;
+    --ink-a: #ff4fa3; --ink-b: #34dccb; --on-ink: #141126; --off: #4a4570; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141126; --surface: #1f1b38; --fg: #f0eefa; --muted: #a49fc2; --line: #353057;
+  --ink-a: #ff4fa3; --ink-b: #34dccb; --on-ink: #141126; --off: #4a4570; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 7vw, 44px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 span { color: var(--ink-a); }
+.lead { margin: 0; color: var(--muted); }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 18px; margin: 0; }
+.label { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: var(--muted); }
+
+/* stage */
+.stage { display: flex; flex-direction: column; gap: 14px; }
+.slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.slot {
+  background: var(--surface); border: 2px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.slot.solo { padding: 26px 20px; align-items: center; text-align: center; }
+.slot .who { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
+.slot .name { font-family: var(--font-display); font-size: 22px; line-height: 1.3; overflow-wrap: anywhere; }
+.slot.solo .name { font-size: clamp(26px, 6vw, 38px); }
+.slot .cls { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 1px 10px; border-radius: 99px; background: var(--ink-b); color: var(--on-ink); }
+.slot.solo .cls { align-self: center; }
+.slot.spinning .name { color: var(--muted); }
+.slot.landed { border-color: var(--ink-a); }
+.slot.landed .name { animation: pop .35s ease-out; }
+@keyframes pop { 0% { transform: scale(.85); } 70% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+.go {
+  font-family: var(--font-display); font-size: 22px; letter-spacing: .04em;
+  border: none; border-radius: 999px; padding: 16px 24px; cursor: pointer;
+  background: var(--ink-a); color: var(--on-ink);
+  box-shadow: 0 5px 0 color-mix(in srgb, var(--ink-a) 55%, var(--fg));
+  transition: transform .08s, box-shadow .08s;
+}
+.go:active { transform: translateY(4px); box-shadow: 0 1px 0 color-mix(in srgb, var(--ink-a) 55%, var(--fg)); }
+.go:disabled { background: var(--off); box-shadow: none; cursor: not-allowed; }
+.go:focus-visible, button:focus-visible, input:focus-visible + .chip { outline: 3px solid var(--ink-b); outline-offset: 3px; }
+.note { margin: 0; font-size: 13px; color: var(--muted); text-align: center; min-height: 1.6em; }
+
+/* settings */
+.settings { display: flex; flex-direction: column; gap: 18px; }
+.row { display: flex; flex-direction: column; gap: 8px; }
+.row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips input { position: absolute; opacity: 0; pointer-events: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+  padding: 6px 14px; border-radius: 99px; font-weight: 700; font-size: 14px;
+  border: 2px solid var(--line); background: var(--surface); color: var(--muted);
+}
+.chip small { font-weight: 400; font-size: 12px; }
+input:checked + .chip { background: var(--ink-b); border-color: var(--ink-b); color: var(--on-ink); }
+.linkbtn { background: none; border: none; color: var(--ink-a); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 2px 4px; }
+.stepper { display: inline-flex; align-items: center; gap: 10px; }
+.stepper button {
+  width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface);
+  color: var(--fg); font-size: 20px; font-weight: 800; cursor: pointer;
+}
+.stepper output { font-family: var(--font-display); font-size: 24px; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; }
+.toggles { display: flex; flex-direction: column; gap: 6px; }
+.toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.toggles input { width: 18px; height: 18px; accent-color: var(--ink-a); }
+
+/* history */
+.history { display: flex; flex-direction: column; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.history li { display: flex; gap: 10px; font-size: 14px; border-bottom: 1px dashed var(--line); padding-block: 4px; }
+.history li span:first-child { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.empty { color: var(--muted); font-size: 14px; margin: 0; }
+
+/* full list */
+details { background: var(--surface); border: 2px solid var(--line); border-radius: 14px; }
+summary { cursor: pointer; padding: 14px 16px; font-weight: 800; }
+.list { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 16px; }
+.group { display: flex; flex-direction: column; gap: 6px; }
+.group .weapons { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 2px 12px; }
+.group label { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; min-width: 0; }
+.group input { accent-color: var(--ink-b); flex: none; }
+.group label.out { color: var(--muted); text-decoration: line-through; }
+footer { color: var(--muted); font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .slot.landed .name { animation: none; } .go { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>スプラ3 <span>ブキルーレット</span></h1>
+    <p class="lead">ボタンひとつで今日のブキを決めます。ブキ種や人数をしぼって、プラベや友だちとのバトルにも。</p>
+  </header>
+
+  <section class="stage" aria-label="結果">
+    <div class="slots" id="slots" aria-live="polite"></div>
+    <button class="go" id="go" type="button">ブキを決める！</button>
+    <p class="note" id="note"></p>
+  </section>
+
+  <section class="settings" aria-label="設定">
+    <div class="row">
+      <div class="row-head">
+        <span class="label">ブキ種</span>
+        <span><button class="linkbtn" id="allOn" type="button">すべて選ぶ</button><button class="linkbtn" id="allOff" type="button">すべて外す</button></span>
+      </div>
+      <div class="chips" id="classChips"></div>
+    </div>
+
+    <div class="row">
+      <span class="label">人数</span>
+      <div class="stepper">
+        <button type="button" id="minus" aria-label="人数を減らす">−</button>
+        <output id="count">1</output>
+        <button type="button" id="plus" aria-label="人数を増やす">＋</button>
+        <span class="lead">人（最大8人）</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="label">オプション</span>
+      <div class="toggles">
+        <label><input type="checkbox" id="noDup" checked> 同じ回でブキを被らせない</label>
+        <label><input type="checkbox" id="noRepeat"> 前回と同じブキは出さない</label>
+        <label><input type="checkbox" id="order" checked> オーダー レプリカを含める</label>
+      </div>
+    </div>
+
+    <div class="row">
+      <span class="label">これまでの結果</span>
+      <ol class="history" id="history"></ol>
+      <p class="empty" id="historyEmpty">まだありません。</p>
+    </div>
+  </section>
+
+  <details id="listBox">
+    <summary>ブキ一覧（個別に外す）<span id="poolCount"></span></summary>
+    <div class="list" id="list"></div>
+  </details>
+
+  <footer>非公式のファンツールです。ブキ名は記憶をもとに入力したもので、誤りや抜けがあるかもしれません。設定はこのブラウザに保存されます。</footer>
+</div>
+
+<script>
+const DATA = {
+  "シューター": "ボールドマーカー,ボールドマーカーネオ,わかばシューター,もみじシューター,シャープマーカー,シャープマーカーネオ,シャープマーカーGECK,プロモデラーMG,プロモデラーRG,プロモデラー彩,スプラシューター,スプラシューターコラボ,スプラシューター煌,ヒーローシューター レプリカ,オクタシューター レプリカ,オーダーシューター レプリカ,.52ガロン,.52ガロンデコ,N-ZAP85,N-ZAP89,プライムシューター,プライムシューターコラボ,プライムシューターFRZN,.96ガロン,.96ガロンデコ,.96ガロン爪,ジェットスイーパー,ジェットスイーパーカスタム,ジェットスイーパーCOBR,スペースシューター,スペースシューターコラボ,L3リールガン,L3リールガンD,L3リールガン箔,H3リールガン,H3リールガンD,H3リールガンSNAK,ボトルガイザー,ボトルガイザーフォイル",
+  "ブラスター": "ノヴァブラスター,ノヴァブラスターネオ,ホットブラスター,ホットブラスターカスタム,オーダーブラスター レプリカ,ロングブラスター,ロングブラスターカスタム,クラッシュブラスター,クラッシュブラスターネオ,ラピッドブラスター,ラピッドブラスターデコ,Rブラスターエリート,Rブラスターエリートデコ,S-BLAST92,S-BLAST91",
+  "ローラー": "スプラローラー,スプラローラーコラボ,オーダーローラー レプリカ,カーボンローラー,カーボンローラーデコ,カーボンローラーANGL,ダイナモローラー,ダイナモローラーテスラ,ヴァリアブルローラー,ヴァリアブルローラーフォイル,ワイドローラー,ワイドローラーコラボ,ワイドローラー惑",
+  "フデ": "パブロ,パブロ・ヒュー,ホクサイ,ホクサイ・ヒュー,ホクサイ彗,オーダーブラシ レプリカ,フィンセント,フィンセント・ヒュー",
+  "チャージャー": "スクイックリンα,スクイックリンβ,スプラチャージャー,スプラチャージャーコラボ,オーダーチャージャー レプリカ,スプラスコープ,スプラスコープコラボ,リッター4K,リッター4Kカスタム,4Kスコープ,4Kスコープカスタム,14式竹筒銃・甲,14式竹筒銃・乙,ソイチューバー,ソイチューバーカスタム,R-PEN/5H,R-PEN/5B",
+  "スロッシャー": "バケットスロッシャー,バケットスロッシャーデコ,オーダースロッシャー レプリカ,ヒッセン,ヒッセン・ヒュー,スクリュースロッシャー,スクリュースロッシャーネオ,オーバーフロッシャー,オーバーフロッシャーデコ,エクスプロッシャー,エクスプロッシャーカスタム,モップリン,モップリンD,モップリン角",
+  "スピナー": "バレルスピナー,バレルスピナーデコ,スプラスピナー,スプラスピナーコラボ,スプラスピナーPYTN,オーダースピナー レプリカ,ハイドラント,ハイドラントカスタム,ハイドラント圧,クーゲルシュライバー,クーゲルシュライバー・ヒュー,ノーチラス47,ノーチラス79,イグザミナー,イグザミナー・ヒュー",
+  "マニューバー": "スパッタリー,スパッタリー・ヒュー,スパッタリーOWL,スプラマニューバー,スプラマニューバーコラボ,スプラマニューバー耀,オーダーマニューバー レプリカ,ケルビン525,ケルビン525デコ,デュアルスイーパー,デュアルスイーパーカスタム,デュアルスイーパー蹄,クアッドホッパーブラック,クアッドホッパーホワイト,ガエンFF,ガエンFFカスタム",
+  "シェルター": "パラシェルター,パラシェルターソレーラ,オーダーシェルター レプリカ,キャンピングシェルター,キャンピングシェルターソレーラ,キャンピングシェルターCREM,スパイガジェット,スパイガジェットソレーラ,スパイガジェット繚,24式張替傘・甲,24式張替傘・乙",
+  "ストリンガー": "トライストリンガー,トライストリンガーコラボ,トライストリンガー燈,オーダーストリンガー レプリカ,LACT-450,LACT-450デコ,LACT-450MILK,フルイドV,フルイドVカスタム",
+  "ワイパー": "ドライブワイパー,ドライブワイパーデコ,ドライブワイパーRUST,オーダーワイパー レプリカ,ジムワイパー,ジムワイパー・ヒュー,ジムワイパー封,デンタルワイパーミント,デンタルワイパースミ"
+};
+const CLASSES = Object.keys(DATA);
+const WEAPONS = CLASSES.flatMap(c => DATA[c].split(",").map(name => ({ name, cls: c, order: name.startsWith("オーダー") })));
+const MAX_PLAYERS = 8;
+const STORE_KEY = "buki-roulette-v1";
+
+const state = { classes: new Set(CLASSES), excluded: new Set(), players: 1, noDup: true, noRepeat: false, order: true, last: [], history: [] };
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (!s) return;
+    state.classes = new Set((s.classes || CLASSES).filter(c => CLASSES.includes(c)));
+    state.excluded = new Set(s.excluded || []);
+    state.players = Math.min(MAX_PLAYERS, Math.max(1, s.players || 1));
+    ["noDup", "noRepeat", "order"].forEach(k => { if (typeof s[k] === "boolean") state[k] = s[k]; });
+    state.history = Array.isArray(s.history) ? s.history.slice(0, 10) : [];
+    state.last = Array.isArray(s.last) ? s.last : [];
+  } catch (e) { /* storage unavailable: keep defaults */ }
+}
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      classes: [...state.classes], excluded: [...state.excluded], players: state.players,
+      noDup: state.noDup, noRepeat: state.noRepeat, order: state.order, history: state.history, last: state.last
+    }));
+  } catch (e) { /* storage unavailable: settings last for this visit only */ }
+}
+
+function pool() {
+  return WEAPONS.filter(w => state.classes.has(w.cls) && !state.excluded.has(w.name) && (state.order || !w.order));
+}
+const $ = id => document.getElementById(id);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+function draw() {
+  let candidates = pool();
+  if (state.noRepeat && state.last.length) {
+    const filtered = candidates.filter(w => !state.last.includes(w.name));
+    if (filtered.length) candidates = filtered;
+  }
+  const out = [];
+  for (let i = 0; i < state.players; i++) {
+    let choices = candidates;
+    if (state.noDup) {
+      choices = candidates.filter(w => !out.includes(w));
+      if (!choices.length) choices = candidates; // fewer weapons than players: allow repeats
+    }
+    out.push(pick(choices));
+  }
+  return out;
+}
+
+function renderSlots(results) {
+  const box = $("slots");
+  box.innerHTML = "";
+  const solo = state.players === 1;
+  for (let i = 0; i < state.players; i++) {
+    const w = results ? results[i] : null;
+    const el = document.createElement("div");
+    el.className = "slot" + (solo ? " solo" : "");
+    el.innerHTML = (solo ? "" : `<span class="who">${i + 1}P</span>`) +
+      `<span class="name"></span><span class="cls"></span>`;
+    el.querySelector(".name").textContent = w ? w.name : "？？？";
+    const cls = el.querySelector(".cls");
+    if (w) cls.textContent = w.cls; else cls.hidden = true;
+    box.appendChild(el);
+  }
+}
+
+let spinning = false;
+function spin() {
+  const p = pool();
+  if (!p.length || spinning) return;
+  spinning = true;
+  $("go").disabled = true;
+  const results = draw();
+  renderSlots(results);
+  const slots = [...document.querySelectorAll(".slot")];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finish = (el, w) => {
+    el.classList.remove("spinning");
+    el.classList.add("landed");
+    el.querySelector(".name").textContent = w.name;
+    const cls = el.querySelector(".cls");
+    cls.textContent = w.cls; cls.hidden = false;
+  };
+  if (reduce) {
+    slots.forEach((el, i) => finish(el, results[i]));
+    done(results);
+    return;
+  }
+  slots.forEach(el => { el.classList.add("spinning"); el.querySelector(".cls").hidden = true; });
+  const start = performance.now();
+  let lastTick = 0;
+  function frame(now) {
+    const t = now - start;
+    if (now - lastTick > 60) {
+      lastTick = now;
+      slots.forEach((el, i) => {
+        if (el.classList.contains("spinning")) el.querySelector(".name").textContent = pick(p).name;
+      });
+    }
+    slots.forEach((el, i) => {
+      if (el.classList.contains("spinning") && t > 900 + i * 180) finish(el, results[i]);
+    });
+    if (slots.some(el => el.classList.contains("spinning"))) requestAnimationFrame(frame);
+    else done(results);
+  }
+  requestAnimationFrame(frame);
+}
+function done(results) {
+  spinning = false;
+  state.last = results.map(w => w.name);
+  const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  state.history.unshift({ time, names: state.last });
+  state.history = state.history.slice(0, 10);
+  save();
+  renderHistory();
+  updateGo();
+}
+
+function renderHistory() {
+  const ol = $("history");
+  ol.innerHTML = "";
+  state.history.forEach(h => {
+    const li = document.createElement("li");
+    const t = document.createElement("span"); t.textContent = h.time;
+    const n = document.createElement("span");
+    n.textContent = h.names.length > 1 ? h.names.map((x, i) => `${i + 1}P ${x}`).join(" ／ ") : h.names[0];
+    li.append(t, n);
+    ol.appendChild(li);
+  });
+  $("historyEmpty").hidden = state.history.length > 0;
+}
+
+function renderChips() {
+  const box = $("classChips");
+  box.innerHTML = "";
+  CLASSES.forEach((c, i) => {
+    const id = "cls-" + i;
+    const n = WEAPONS.filter(w => w.cls === c).length;
+    const wrap = document.createElement("span");
+    wrap.innerHTML = `<input type="checkbox" id="${id}"><label class="chip" for="${id}">${c}<small>${n}</small></label>`;
+    const input = wrap.querySelector("input");
+    input.checked = state.classes.has(c);
+    input.addEventListener("change", () => {
+      input.checked ? state.classes.add(c) : state.classes.delete(c);
+      changed();
+    });
+    box.appendChild(wrap);
+  });
+}
+
+function renderList() {
+  const box = $("list");
+  box.innerHTML = "";
+  let k = 0;
+  CLASSES.forEach(c => {
+    const g = document.createElement("div");
+    g.className = "group";
+    const h = document.createElement("h2"); h.textContent = c;
+    const grid = document.createElement("div"); grid.className = "weapons";
+    WEAPONS.filter(w => w.cls === c).forEach(w => {
+      const id = "w-" + (k++);
+      const label = document.createElement("label");
+      label.htmlFor = id;
+      const input = document.createElement("input");
+      input.type = "checkbox"; input.id = id; input.checked = !state.excluded.has(w.name);
+      const span = document.createElement("span"); span.textContent = w.name;
+      label.classList.toggle("out", !input.checked);
+      input.addEventListener("change", () => {
+        input.checked ? state.excluded.delete(w.name) : state.excluded.add(w.name);
+        label.classList.toggle("out", !input.checked);
+        changed(false);
+      });
+      label.append(input, span);
+      grid.appendChild(label);
+    });
+    g.append(h, grid);
+    box.appendChild(g);
+  });
+}
+
+function updateGo() {
+  const n = pool().length;
+  $("poolCount").textContent = `　抽選対象 ${n} / ${WEAPONS.length}`;
+  $("go").disabled = spinning || n === 0;
+  let msg = `${n}種類のブキから選びます`;
+  if (n === 0) msg = "抽選できるブキがありません。ブキ種を1つ以上選んでください。";
+  else if (state.noDup && n < state.players) msg = `ブキが${state.players}種類より少ないため、一部が被ります`;
+  $("note").textContent = msg;
+}
+
+function changed(rerenderSlots = true) {
+  save();
+  if (rerenderSlots) {
+    $("count").textContent = state.players;
+    $("minus").disabled = state.players <= 1;
+    $("plus").disabled = state.players >= MAX_PLAYERS;
+    if (!spinning) renderSlots(null);
+  }
+  updateGo();
+}
+
+function init() {
+  load();
+  renderChips();
+  renderList();
+  renderHistory();
+  ["noDup", "noRepeat", "order"].forEach(k => {
+    const el = $(k);
+    el.checked = state[k];
+    el.addEventListener("change", () => { state[k] = el.checked; changed(false); });
+  });
+  $("minus").addEventListener("click", () => { if (state.players > 1) { state.players--; changed(); } });
+  $("plus").addEventListener("click", () => { if (state.players < MAX_PLAYERS) { state.players++; changed(); } });
+  $("allOn").addEventListener("click", () => { state.classes = new Set(CLASSES); renderChips(); changed(false); });
+  $("allOff").addEventListener("click", () => { state.classes = new Set(); renderChips(); changed(false); });
+  $("go").addEventListener("click", spin);
+  changed();
+  // Open on a real result so the first view shows what the tool does.
+  const sample = draw();
+  if (sample.length && sample[0]) {
+    renderSlots(sample);
+    document.querySelectorAll(".slot").forEach(el => el.classList.add("landed"));
+  }
+}
+init();
+</script>
+</body>
+</html>
