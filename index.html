@@ -97,12 +97,21 @@ h2 { font-family: var(--font-display); font-weight: 400; font-size: 18px; margin
 .chip small { font-weight: 400; font-size: 12px; }
 input:checked + .chip { background: var(--ink-b); border-color: var(--ink-b); color: var(--on-ink); }
 .linkbtn { background: none; border: none; color: var(--ink-a); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 2px 4px; }
-.stepper { display: inline-flex; align-items: center; gap: 10px; }
-.stepper button {
-  width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface);
-  color: var(--fg); font-size: 20px; font-weight: 800; cursor: pointer;
+.players { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.player { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.player .num { font-size: 12px; font-weight: 800; color: var(--muted); width: 2.2em; flex: none; font-variant-numeric: tabular-nums; }
+.player input {
+  flex: 1; min-width: 0; font: inherit; font-weight: 700; color: var(--fg);
+  background: var(--surface); border: 2px solid var(--line); border-radius: 10px; padding: 7px 10px;
 }
-.stepper output { font-family: var(--font-display); font-size: 24px; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; }
+.player input:focus-visible { outline: 3px solid var(--ink-b); outline-offset: 1px; }
+.player .remove, .addplayer {
+  border: 2px solid var(--line); background: var(--surface); color: var(--muted);
+  font: inherit; font-weight: 800; cursor: pointer; border-radius: 99px;
+}
+.player .remove { width: 34px; height: 34px; flex: none; font-size: 16px; line-height: 1; }
+.addplayer { padding: 6px 16px; align-self: flex-start; color: var(--ink-a); }
+.player .remove:disabled, .addplayer:disabled { opacity: .4; cursor: not-allowed; }
 .toggles { display: flex; flex-direction: column; gap: 6px; }
 .toggles label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
 .toggles input { width: 18px; height: 18px; accent-color: var(--ink-a); }
@@ -131,8 +140,17 @@ footer { color: var(--muted); font-size: 12px; }
 <div class="wrap">
   <header>
     <h1>スプラ3 <span>ブキルーレット</span></h1>
-    <p class="lead">ボタンひとつで今日のブキを決めます。ブキ種や人数をしぼって、プラベや友だちとのバトルにも。</p>
+    <p class="lead">参加する人の名前を入れてボタンを押すと、一人ずつブキを決めます。プラベや友だちとのバトルにどうぞ。</p>
   </header>
+
+  <section class="row" aria-label="プレイヤー">
+    <div class="row-head">
+      <span class="label">プレイヤー</span>
+      <span class="lead" id="playerCount"></span>
+    </div>
+    <div class="players" id="players"></div>
+    <button class="addplayer" id="addPlayer" type="button">＋ プレイヤーを追加</button>
+  </section>
 
   <section class="stage" aria-label="結果">
     <div class="slots" id="slots" aria-live="polite"></div>
@@ -147,16 +165,6 @@ footer { color: var(--muted); font-size: 12px; }
         <span><button class="linkbtn" id="allOn" type="button">すべて選ぶ</button><button class="linkbtn" id="allOff" type="button">すべて外す</button></span>
       </div>
       <div class="chips" id="classChips"></div>
-    </div>
-
-    <div class="row">
-      <span class="label">人数</span>
-      <div class="stepper">
-        <button type="button" id="minus" aria-label="人数を減らす">−</button>
-        <output id="count">1</output>
-        <button type="button" id="plus" aria-label="人数を増やす">＋</button>
-        <span class="lead">人（最大8人）</span>
-      </div>
     </div>
 
     <div class="row">
@@ -206,7 +214,8 @@ const kitText = w => `サブ ${w.sub} ／ SP ${w.sp}`;
 const MAX_PLAYERS = 8;
 const STORE_KEY = "buki-roulette-v1";
 
-const state = { classes: new Set(CLASSES), excluded: new Set(), players: 1, noDup: true, noRepeat: false, order: true, last: [], history: [] };
+const state = { classes: new Set(CLASSES), excluded: new Set(), names: [""], noDup: true, noRepeat: false, order: true, last: [], history: [] };
+const playerLabel = i => state.names[i].trim() || `${i + 1}P`;
 
 function load() {
   try {
@@ -214,7 +223,7 @@ function load() {
     if (!s) return;
     state.classes = new Set((s.classes || CLASSES).filter(c => CLASSES.includes(c)));
     state.excluded = new Set(s.excluded || []);
-    state.players = Math.min(MAX_PLAYERS, Math.max(1, s.players || 1));
+    if (Array.isArray(s.names) && s.names.length) state.names = s.names.slice(0, MAX_PLAYERS).map(String);
     ["noDup", "noRepeat", "order"].forEach(k => { if (typeof s[k] === "boolean") state[k] = s[k]; });
     state.history = Array.isArray(s.history) ? s.history.slice(0, 10) : [];
     state.last = Array.isArray(s.last) ? s.last : [];
@@ -223,7 +232,7 @@ function load() {
 function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
-      classes: [...state.classes], excluded: [...state.excluded], players: state.players,
+      classes: [...state.classes], excluded: [...state.excluded], names: state.names,
       noDup: state.noDup, noRepeat: state.noRepeat, order: state.order, history: state.history, last: state.last
     }));
   } catch (e) { /* storage unavailable: settings last for this visit only */ }
@@ -242,7 +251,7 @@ function draw() {
     if (filtered.length) candidates = filtered;
   }
   const out = [];
-  for (let i = 0; i < state.players; i++) {
+  for (let i = 0; i < state.names.length; i++) {
     let choices = candidates;
     if (state.noDup) {
       choices = candidates.filter(w => !out.includes(w));
@@ -256,17 +265,59 @@ function draw() {
 function renderSlots(results) {
   const box = $("slots");
   box.innerHTML = "";
-  const solo = state.players === 1;
-  for (let i = 0; i < state.players; i++) {
+  const solo = state.names.length === 1;
+  for (let i = 0; i < state.names.length; i++) {
     const w = results ? results[i] : null;
     const el = document.createElement("div");
     el.className = "slot" + (solo ? " solo" : "");
-    el.innerHTML = (solo ? "" : `<span class="who">${i + 1}P</span>`) +
-      `<span class="name"></span><span class="cls"></span><span class="kit"></span>`;
+    el.innerHTML = `<span class="who"></span><span class="name"></span><span class="cls"></span><span class="kit"></span>`;
     el.querySelector(".name").textContent = w ? w.name : "？？？";
     showDetails(el, w);
     box.appendChild(el);
   }
+  updateWho();
+}
+// Refresh the player names on the result cards without redrawing the weapons.
+function updateWho() {
+  const solo = state.names.length === 1;
+  document.querySelectorAll(".slot .who").forEach((el, i) => {
+    el.textContent = playerLabel(i);
+    el.hidden = solo && !state.names[0].trim();
+  });
+}
+
+function renderPlayers() {
+  const box = $("players");
+  box.innerHTML = "";
+  state.names.forEach((name, i) => {
+    const row = document.createElement("div");
+    row.className = "player";
+    const num = document.createElement("span"); num.className = "num"; num.textContent = `${i + 1}P`;
+    const input = document.createElement("input");
+    input.type = "text"; input.id = "player-" + i; input.maxLength = 20;
+    input.placeholder = "名前"; input.value = name; input.autocomplete = "off";
+    input.setAttribute("aria-label", `${i + 1}人目の名前`);
+    input.addEventListener("input", () => { state.names[i] = input.value; save(); updateWho(); });
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); i === state.names.length - 1 ? addPlayer() : $("player-" + (i + 1)).focus(); }
+    });
+    const rm = document.createElement("button");
+    rm.type = "button"; rm.className = "remove"; rm.textContent = "×";
+    rm.setAttribute("aria-label", `${playerLabel(i)}を外す`);
+    rm.disabled = state.names.length <= 1;
+    rm.addEventListener("click", () => { state.names.splice(i, 1); renderPlayers(); changed(); });
+    row.append(num, input, rm);
+    box.appendChild(row);
+  });
+  $("addPlayer").disabled = state.names.length >= MAX_PLAYERS;
+  $("playerCount").textContent = `${state.names.length}人（最大${MAX_PLAYERS}人）`;
+}
+function addPlayer() {
+  if (state.names.length >= MAX_PLAYERS) return;
+  state.names.push("");
+  renderPlayers();
+  changed();
+  $("player-" + (state.names.length - 1)).focus();
 }
 function showDetails(el, w) {
   const cls = el.querySelector(".cls"), kit = el.querySelector(".kit");
@@ -318,7 +369,7 @@ function done(results) {
   spinning = false;
   state.last = results.map(w => w.name);
   const time = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-  state.history.unshift({ time, names: state.last });
+  state.history.unshift({ time, names: state.last, players: state.names.map((_, i) => playerLabel(i)) });
   state.history = state.history.slice(0, 10);
   save();
   renderHistory();
@@ -332,7 +383,8 @@ function renderHistory() {
     const li = document.createElement("li");
     const t = document.createElement("span"); t.textContent = h.time;
     const n = document.createElement("span");
-    n.textContent = h.names.length > 1 ? h.names.map((x, i) => `${i + 1}P ${x}`).join(" ／ ") : h.names[0];
+    const who = h.players || h.names.map((_, i) => `${i + 1}P`);
+    n.textContent = h.names.map((x, i) => `${who[i]}：${x}`).join(" ／ ");
     li.append(t, n);
     ol.appendChild(li);
   });
@@ -395,18 +447,13 @@ function updateGo() {
   $("go").disabled = spinning || n === 0;
   let msg = `${n}種類のブキから選びます`;
   if (n === 0) msg = "抽選できるブキがありません。ブキ種を1つ以上選んでください。";
-  else if (state.noDup && n < state.players) msg = `ブキが${state.players}種類より少ないため、一部が被ります`;
+  else if (state.noDup && n < state.names.length) msg = `ブキが${state.names.length}種類より少ないため、一部が被ります`;
   $("note").textContent = msg;
 }
 
 function changed(rerenderSlots = true) {
   save();
-  if (rerenderSlots) {
-    $("count").textContent = state.players;
-    $("minus").disabled = state.players <= 1;
-    $("plus").disabled = state.players >= MAX_PLAYERS;
-    if (!spinning) renderSlots(null);
-  }
+  if (rerenderSlots && !spinning) renderSlots(null);
   updateGo();
 }
 
@@ -420,8 +467,8 @@ function init() {
     el.checked = state[k];
     el.addEventListener("change", () => { state[k] = el.checked; changed(false); });
   });
-  $("minus").addEventListener("click", () => { if (state.players > 1) { state.players--; changed(); } });
-  $("plus").addEventListener("click", () => { if (state.players < MAX_PLAYERS) { state.players++; changed(); } });
+  renderPlayers();
+  $("addPlayer").addEventListener("click", addPlayer);
   $("allOn").addEventListener("click", () => { state.classes = new Set(CLASSES); renderChips(); changed(false); });
   $("allOff").addEventListener("click", () => { state.classes = new Set(); renderChips(); changed(false); });
   $("go").addEventListener("click", spin);
