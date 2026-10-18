@@ -61,6 +61,7 @@
         <label><input type="checkbox" id="noDup" checked> 同じ回でブキを被らせない</label>
         <label><input type="checkbox" id="noRepeat"> 前回と同じブキは出さない</label>
         <label><input type="checkbox" id="order" checked> レプリカ（オーダー・ヒーローなど）を含める</label>
+        <label><input type="checkbox" id="baseOnly"> 無印のブキだけにする（コラボ・デコ・カスタムなどを除く）</label>
       </div>
     </div>
 
@@ -98,11 +99,18 @@ const WEAPONS = CLASSES.flatMap(c => DATA[c].split(",").map(item => {
   const [name, sub, sp] = item.split("|");
   return { name, sub, sp, cls: c, replica: name.endsWith("レプリカ") };
 }));
+// 無印 = each main weapon's original kit. A kit is a variant when another kit's name is its prefix
+// (スプラシューター → スプラシューターコラボ), when it is a replica, or when it is listed here
+// because its name does not share a prefix with the original (わかば → もみじ, MG → RG など).
+const VARIANT_NAMES = new Set(["もみじシューター", "プロモデラーRG", "プロモデラー彩", "N-ZAP89", "スクイックリンβ", "R-PEN/5B", "14式竹筒銃・乙", "S-BLAST91", "ノーチラス79", "クアッドホッパーホワイト", "24式張替傘・乙", "デンタルワイパースミ"]);
+WEAPONS.forEach(w => {
+  w.base = !w.replica && !VARIANT_NAMES.has(w.name) && !WEAPONS.some(o => o !== w && w.name.startsWith(o.name));
+});
 const kitText = w => `サブ ${w.sub} ／ SP ${w.sp}`;
 const MAX_PLAYERS = 8;
 const STORE_KEY = "buki-roulette-v1";
 
-const state = { classes: new Set(CLASSES), excluded: new Set(), names: [""], noDup: true, noRepeat: false, order: true, last: [], history: [] };
+const state = { classes: new Set(CLASSES), excluded: new Set(), names: [""], noDup: true, noRepeat: false, order: true, baseOnly: false, last: [], history: [] };
 const playerLabel = i => state.names[i].trim() || `${i + 1}P`;
 
 function load() {
@@ -112,7 +120,7 @@ function load() {
     state.classes = new Set((s.classes || CLASSES).filter(c => CLASSES.includes(c)));
     state.excluded = new Set(s.excluded || []);
     if (Array.isArray(s.names) && s.names.length) state.names = s.names.slice(0, MAX_PLAYERS).map(String);
-    ["noDup", "noRepeat", "order"].forEach(k => { if (typeof s[k] === "boolean") state[k] = s[k]; });
+    ["noDup", "noRepeat", "order", "baseOnly"].forEach(k => { if (typeof s[k] === "boolean") state[k] = s[k]; });
     state.history = Array.isArray(s.history) ? s.history.slice(0, 10) : [];
     state.last = Array.isArray(s.last) ? s.last : [];
   } catch (e) { /* storage unavailable: keep defaults */ }
@@ -121,13 +129,13 @@ function save() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       classes: [...state.classes], excluded: [...state.excluded], names: state.names,
-      noDup: state.noDup, noRepeat: state.noRepeat, order: state.order, history: state.history, last: state.last
+      noDup: state.noDup, noRepeat: state.noRepeat, order: state.order, baseOnly: state.baseOnly, history: state.history, last: state.last
     }));
   } catch (e) { /* storage unavailable: settings last for this visit only */ }
 }
 
 function pool() {
-  return WEAPONS.filter(w => state.classes.has(w.cls) && !state.excluded.has(w.name) && (state.order || !w.replica));
+  return WEAPONS.filter(w => state.classes.has(w.cls) && !state.excluded.has(w.name) && (state.order || !w.replica) && (!state.baseOnly || w.base));
 }
 const $ = id => document.getElementById(id);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -404,7 +412,7 @@ function init() {
   renderChips();
   renderList();
   renderHistory();
-  ["noDup", "noRepeat", "order"].forEach(k => {
+  ["noDup", "noRepeat", "order", "baseOnly"].forEach(k => {
     const el = $(k);
     el.checked = state[k];
     el.addEventListener("change", () => { state[k] = el.checked; changed(false); });
