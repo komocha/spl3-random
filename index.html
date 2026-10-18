@@ -29,22 +29,6 @@
     <button class="addplayer" id="addPlayer" type="button">＋ プレイヤーを追加</button>
   </section>
 
-  <dialog class="player-dialog" id="playerDialog" aria-labelledby="playerDialogTitle">
-    <form id="playerForm" method="dialog">
-      <span class="label" id="playerDialogTitle">プレイヤーを追加</span>
-      <label class="field" for="playerName">
-        <span class="field-label" id="playerNameLabel">名前</span>
-        <input type="text" id="playerName" maxlength="20" autocomplete="off" placeholder="例: たろう">
-      </label>
-      <p class="dialog-note" id="playerDialogNote"></p>
-      <div class="dialog-actions">
-        <button type="button" class="dialog-cancel" id="playerCancel">キャンセル</button>
-        <button type="button" class="dialog-more" id="playerMore">続けて追加</button>
-        <button type="submit" class="dialog-ok" id="playerOk">追加</button>
-      </div>
-    </form>
-  </dialog>
-
   <section class="stage" aria-label="結果">
     <div class="slots" id="slots" aria-live="polite"></div>
     <button class="go" id="go" type="button">ブキを決める！</button>
@@ -199,65 +183,31 @@ function renderPlayers() {
     const row = document.createElement("div");
     row.className = "player";
     const num = document.createElement("span"); num.className = "num"; num.textContent = `${i + 1}P`;
-    const edit = document.createElement("button");
-    edit.type = "button"; edit.className = "player-name" + (name.trim() ? "" : " unnamed");
-    edit.textContent = name.trim() || "名前なし";
-    edit.setAttribute("aria-label", `${playerLabel(i)}の名前を変える`);
-    edit.addEventListener("click", () => openPlayerDialog(i));
+    const input = document.createElement("input");
+    input.type = "text"; input.id = "player-" + i; input.maxLength = 20;
+    input.placeholder = "名前"; input.value = name; input.autocomplete = "off";
+    input.setAttribute("aria-label", `${i + 1}人目の名前`);
+    input.addEventListener("input", () => { state.names[i] = input.value; save(); updateWho(); });
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); i === state.names.length - 1 ? addPlayer() : $("player-" + (i + 1)).focus(); }
+    });
     const rm = document.createElement("button");
     rm.type = "button"; rm.className = "remove"; rm.textContent = "×";
     rm.setAttribute("aria-label", `${playerLabel(i)}を外す`);
     rm.disabled = state.names.length <= 1;
     rm.addEventListener("click", () => { state.names.splice(i, 1); renderPlayers(); changed(); });
-    row.append(num, edit, rm);
+    row.append(num, input, rm);
     box.appendChild(row);
   });
   $("addPlayer").disabled = state.names.length >= MAX_PLAYERS;
   $("playerCount").textContent = `${state.names.length}人（最大${MAX_PLAYERS}人）`;
 }
-
-// ---- player dialog: adds a new player, or renames one when editIndex is set ----
-let editIndex = null;
-function openPlayerDialog(index = null) {
-  editIndex = index;
-  const adding = index === null;
-  if (adding && state.names.length >= MAX_PLAYERS) return;
-  $("playerDialogTitle").textContent = adding ? "プレイヤーを追加" : `${index + 1}P の名前を変える`;
-  $("playerOk").textContent = adding ? "追加" : "変更";
-  $("playerName").value = adding ? "" : state.names[index];
-  syncPlayerDialog();
-  $("playerDialog").showModal();
-  $("playerName").focus();
-}
-function syncPlayerDialog() {
-  const adding = editIndex === null;
-  const n = state.names.length;
-  // "続けて追加" only makes sense while there is room for one more after this one.
-  $("playerMore").hidden = !adding || n + 1 >= MAX_PLAYERS;
-  $("playerNameLabel").textContent = adding ? `${n + 1}P の名前` : "名前";
-  $("playerDialogNote").textContent = adding
-    ? `空のまま追加すると「${n + 1}P」と表示します。（いま ${n} 人／最大 ${MAX_PLAYERS} 人）`
-    : "空にすると番号で表示します。";
-}
-function commitPlayer(keepOpen) {
-  const name = $("playerName").value.trim();
-  if (editIndex === null) {
-    if (state.names.length >= MAX_PLAYERS) { $("playerDialog").close(); return; }
-    state.names.push(name);
-    changed();
-  } else {
-    state.names[editIndex] = name;
-    save();
-    updateWho();
-  }
+function addPlayer() {
+  if (state.names.length >= MAX_PLAYERS) return;
+  state.names.push("");
   renderPlayers();
-  if (keepOpen && state.names.length < MAX_PLAYERS) {
-    $("playerName").value = "";
-    syncPlayerDialog();
-    $("playerName").focus();
-  } else {
-    $("playerDialog").close();
-  }
+  changed();
+  $("player-" + (state.names.length - 1)).focus();
 }
 function showDetails(el, w) {
   const cls = el.querySelector(".cls"), sub = el.querySelector(".kit-sub"), sp = el.querySelector(".kit-sp");
@@ -460,12 +410,7 @@ function init() {
     el.addEventListener("change", () => { state[k] = el.checked; changed(false); });
   });
   renderPlayers();
-  $("addPlayer").addEventListener("click", () => openPlayerDialog());
-  $("playerForm").addEventListener("submit", e => { e.preventDefault(); commitPlayer(false); });
-  $("playerMore").addEventListener("click", () => commitPlayer(true));
-  $("playerCancel").addEventListener("click", () => $("playerDialog").close());
-  // Clicking the dimmed backdrop (outside the panel) closes the dialog.
-  $("playerDialog").addEventListener("click", e => { if (e.target === $("playerDialog")) $("playerDialog").close(); });
+  $("addPlayer").addEventListener("click", addPlayer);
   $("allOn").addEventListener("click", () => { state.classes = new Set(CLASSES); renderChips(); changed(false); });
   $("allOff").addEventListener("click", () => { state.classes = new Set(); renderChips(); changed(false); });
   $("go").addEventListener("click", spin);

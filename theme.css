@@ -136,36 +136,12 @@ input:checked + .chip { background: var(--stat); color: var(--text-on-lime); }
   flex: none; width: 2.6em; text-align: center; font-size: 12px; font-weight: 900;
   background: var(--stat); color: var(--text-on-lime); border-radius: 4px; padding: 6px 0;
 }
-.player-name {
-  flex: 1; min-width: 0; text-align: left; font: inherit; font-weight: 700; color: var(--text); cursor: pointer;
+.player input {
+  flex: 1; min-width: 0; font: inherit; font-weight: 700; color: var(--text);
   background: var(--panel); border: 2px solid var(--panel-line); border-radius: 6px; padding: 6px 10px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.player-name.unnamed { color: var(--text-dim); font-weight: 500; }
-.player-name:hover { border-color: var(--ink-lime); }
-
-/* ---------- プレイヤー追加ダイアログ ---------- */
-.player-dialog {
-  width: min(420px, calc(100vw - 32px)); padding: 0; color: var(--text);
-  background: var(--panel); border: 2px solid var(--panel-line); border-radius: 10px;
-  box-shadow: 0 0 0 4px var(--ink-lime);
-}
-.player-dialog::backdrop { background: color-mix(in srgb, #000 70%, transparent); }
-.player-dialog form { display: flex; flex-direction: column; gap: 14px; padding: 20px 18px 18px; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 13px; font-weight: 900; color: var(--ink-lime); }
-.field input {
-  font: inherit; font-size: 16px; font-weight: 700; color: var(--text); width: 100%;
-  background: #000; border: 2px solid var(--panel-line); border-radius: 6px; padding: 8px 12px;
-}
-.field input::placeholder { color: var(--text-dim); font-weight: 500; }
-.field input:focus-visible { outline: 3px solid var(--ink-lime); outline-offset: 1px; }
-.dialog-note { margin: 0; font-size: 12px; color: var(--text-dim); }
-.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.dialog-actions button { font: inherit; font-weight: 900; font-size: 14px; cursor: pointer; border-radius: 6px; padding: 7px 16px; }
-.dialog-cancel { background: transparent; color: var(--text); border: 2px solid var(--stat); }
-.dialog-more { background: transparent; color: var(--ink-lime); border: 2px solid var(--ink-lime); }
-.dialog-actions .dialog-ok { background: var(--ink-lime); color: var(--text-on-lime); border: 2px solid #000; font-family: var(--font-display); font-weight: 400; }
+.player input::placeholder { color: var(--text-dim); }
+.player input:focus-visible { outline: 3px solid var(--ink-lime); outline-offset: 1px; }
 .player .remove, .addplayer {
   border: 2px solid var(--stat); background: transparent; color: var(--text);
   font: inherit; font-weight: 900; cursor: pointer; border-radius: 6px;
