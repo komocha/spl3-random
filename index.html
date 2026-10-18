@@ -349,7 +349,7 @@ async function sendToDiscord() {
       color: 0xd4f01c,
       fields: lastDraw.map(({ who, w }) => ({
         name: who,
-        value: `**${w.name}**（${w.cls}）\nサブウェポン：${w.sub}\nスペシャルウェポン：${w.sp}`,
+        value: `**${w.name}**（${w.cls}）`,
         inline: lastDraw.length > 1
       }))
     }]
