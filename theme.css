@@ -176,6 +176,25 @@ summary span { font-family: var(--font-body); font-weight: 700; font-size: 13px;
 .group input { accent-color: var(--ink-lime); flex: none; margin-top: 4px; }
 .group label.out { color: var(--text-dim); text-decoration: line-through; }
 
+/* ---------- Discord に送る ---------- */
+.webhook { display: flex; gap: 8px; flex-wrap: wrap; }
+.webhook input {
+  flex: 1 1 260px; min-width: 0; font: inherit; font-size: 14px; color: var(--text);
+  background: var(--panel); border: 2px solid var(--panel-line); border-radius: 6px; padding: 7px 10px;
+}
+.webhook input::placeholder { color: var(--text-dim); }
+.webhook input:focus-visible { outline: 3px solid var(--ink-lime); outline-offset: 1px; }
+.send {
+  flex: none; font-family: var(--font-display); font-size: 15px; cursor: pointer;
+  background: var(--ink-lime); color: var(--text-on-lime); border: 2px solid #000; border-radius: 6px; padding: 6px 18px;
+}
+.send:disabled { background: #444; color: var(--text-dim); cursor: not-allowed; }
+.autosend { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.autosend input { width: 18px; height: 18px; accent-color: var(--ink-lime); }
+.send-status { margin: 0; font-size: 13px; min-height: 1.7em; color: var(--text-dim); }
+.send-status[data-kind="ok"] { color: var(--ink-lime); font-weight: 700; }
+.send-status[data-kind="error"] { color: #ff8a8a; font-weight: 700; }
+
 footer { color: var(--text-dim); font-size: 12px; }
 
 @media (prefers-reduced-motion: reduce) {

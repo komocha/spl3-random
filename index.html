@@ -35,6 +35,17 @@
     <p class="note" id="note"></p>
   </section>
 
+  <section class="row discord" aria-label="Discord に送る">
+    <span class="label">Discord に送る</span>
+    <p class="lead">チャンネルの Webhook URL を貼ると、結果を Discord に送れます。URL はこの画面を開いている間だけ使い、保存しません。</p>
+    <div class="webhook">
+      <input type="url" id="webhookUrl" placeholder="https://discord.com/api/webhooks/…" autocomplete="off" spellcheck="false" aria-label="Discord の Webhook URL">
+      <button class="send" id="sendDiscord" type="button">結果を送る</button>
+    </div>
+    <label class="autosend"><input type="checkbox" id="autoSend" autocomplete="off"> 抽選のたびに自動で送る</label>
+    <p class="send-status" id="sendStatus" role="status"></p>
+  </section>
+
   <section class="settings" aria-label="設定">
     <div class="row">
       <div class="row-head">
@@ -255,6 +266,59 @@ function done(results) {
   save();
   renderHistory();
   updateGo();
+  lastDraw = results.map((w, i) => ({ who: playerLabel(i), w }));
+  updateSend();
+  if ($("autoSend").checked && webhookValid()) sendToDiscord();
+}
+
+// ---- Discord webhook: the URL lives only in the input field and is never stored ----
+const WEBHOOK_RE = /^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+\/?$/;
+let lastDraw = null;
+let sending = false;
+const webhookValid = () => WEBHOOK_RE.test($("webhookUrl").value.trim());
+
+function setSendStatus(msg, kind) {
+  const el = $("sendStatus");
+  el.textContent = msg;
+  el.dataset.kind = kind || "";
+}
+function updateSend() {
+  $("sendDiscord").disabled = sending || !lastDraw || !webhookValid();
+}
+
+async function sendToDiscord() {
+  if (sending || !lastDraw) return;
+  if (!webhookValid()) { setSendStatus("Webhook URL の形が正しくありません。Discord のチャンネル設定 → 連携サービス → ウェブフック でコピーした URL を貼ってください。", "error"); return; }
+  sending = true; updateSend();
+  setSendStatus("送信中…");
+  const payload = {
+    username: "ブキルーレット",
+    allowed_mentions: { parse: [] }, // never ping anyone, even if a name contains @everyone
+    embeds: [{
+      title: "ブキルーレットの結果",
+      color: 0xd4f01c,
+      fields: lastDraw.map(({ who, w }) => ({
+        name: who,
+        value: `**${w.name}**（${w.cls}）\nサブウェポン：${w.sub}\nスペシャルウェポン：${w.sp}`,
+        inline: lastDraw.length > 1
+      }))
+    }]
+  };
+  try {
+    const res = await fetch($("webhookUrl").value.trim(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) setSendStatus("Discord に送りました。", "ok");
+    else if (res.status === 404 || res.status === 401) setSendStatus("この Webhook は見つかりませんでした。削除されていないか、URL が最後まで貼れているか確かめてください。", "error");
+    else if (res.status === 429) setSendStatus("送信が多すぎるため Discord に止められました。少し待ってから送ってください。", "error");
+    else setSendStatus(`送れませんでした（Discord の応答 ${res.status}）。少し待ってからもう一度送ってください。`, "error");
+  } catch (e) {
+    setSendStatus("Discord につながりませんでした。この共有ページからは送れない場合があります。GitHub Pages で公開したページか、手元で開いた index.html から送ってください。", "error");
+  } finally {
+    sending = false; updateSend();
+  }
 }
 
 function renderHistory() {
@@ -353,6 +417,9 @@ function init() {
   $("allOn").addEventListener("click", () => { state.classes = new Set(CLASSES); renderChips(); changed(false); });
   $("allOff").addEventListener("click", () => { state.classes = new Set(); renderChips(); changed(false); });
   $("go").addEventListener("click", spin);
+  $("webhookUrl").addEventListener("input", () => { setSendStatus(""); updateSend(); });
+  $("sendDiscord").addEventListener("click", sendToDiscord);
+  updateSend();
   changed();
   // Open on a real result so the first view shows what the tool does.
   const sample = draw();
